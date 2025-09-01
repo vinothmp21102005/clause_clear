@@ -1,0 +1,26 @@
+import { z } from "zod";
+
+// Text analysis schemas
+export const textInputSchema = z.object({
+  text: z.string().min(1, "Text is required").max(50000, "Text is too long"),
+});
+
+export const analysisResultSchema = z.object({
+  summary: z.string(),
+  keyPoints: z.array(z.string()),
+});
+
+export const questionInputSchema = z.object({
+  originalText: z.string().min(1, "Original text is required"),
+  question: z.string().min(1, "Question is required"),
+});
+
+export const answerResultSchema = z.object({
+  answer: z.string(),
+});
+
+// Types
+export type TextInput = z.infer<typeof textInputSchema>;
+export type AnalysisResult = z.infer<typeof analysisResultSchema>;
+export type QuestionInput = z.infer<typeof questionInputSchema>;
+export type AnswerResult = z.infer<typeof answerResultSchema>;
