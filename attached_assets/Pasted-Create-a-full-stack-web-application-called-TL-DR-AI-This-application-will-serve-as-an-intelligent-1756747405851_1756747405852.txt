@@ -1,0 +1,210 @@
+Create a full-stack web application called "TL;DR AI". This application will serve as an intelligent text analysis tool. Users can paste in long articles, reports, or emails, and the AI will provide a concise summary, extract key bullet points, and allow the user to ask follow-up questions about the provided text.
+
+The entire AI backend must be powered by Google Cloud's Vertex AI platform, using the Gemini model for text generation and the Embeddings API for semantic understanding.
+
+1. Core User Features
+Text Input: A large, clean textarea where a user can paste any amount of text.
+
+Analysis Output: After the user submits the text, the UI should display three distinct sections:
+
+One-Sentence Summary: A single, concise sentence that captures the essence of the entire text.
+
+Key Points: An unordered list of 3-5 bullet points highlighting the most important information and conclusions from the text.
+
+Ask a Question: A chat-style input box where the user can ask specific questions about the content they pasted.
+
+Interactive Q&A: When a user asks a question, the AI will answer it based only on the context of the original document. The answer should appear in the UI, creating a conversational feel.
+
+UI/UX: The user interface should be clean, modern, and professional, with a dark theme. It must include clear loading indicators while the AI is processing and handle potential errors gracefully.
+
+2. Technical Specifications
+File Structure
+Generate the project with the following file structure:
+
+/
+├── backend/
+│   ├── app/
+│   │   ├── __init__.py
+│   │   ├── main.py
+│   │   ├── core.py
+│   │   └── models.py
+│   ├── requirements.txt
+├── frontend/
+│   ├── src/
+│   │   ├── App.jsx
+│   │   └── index.css
+│   └── package.json
+└── README.md
+Backend (FastAPI & Google Cloud)
+backend/requirements.txt:
+
+fastapi
+uvicorn[standard]
+pydantic
+google-cloud-aiplatform
+cors-middleware
+backend/app/models.py:
+Define the Pydantic models for robust API data validation.
+
+Python
+
+from pydantic import BaseModel
+from typing import List
+
+class TextInput(BaseModel):
+    text: str
+
+class AnalysisResult(BaseModel):
+    summary: str
+    key_points: List[str]
+
+class QuestionInput(BaseModel):
+    original_text: str
+    question: str
+
+class AnswerResult(BaseModel):
+    answer: str
+backend/app/core.py:
+This file contains all the logic for interacting with Google Cloud Vertex AI.
+
+Python
+
+import vertexai
+from vertexai.generative_models import GenerativeModel
+
+# --- Configuration ---
+# User must replace these with their own project details.
+PROJECT_ID = "your-gcp-project-id"
+LOCATION = "us-central1"
+
+# --- Initialization ---
+vertexai.init(project=PROJECT_ID, location=LOCATION)
+gemini_model = GenerativeModel("gemini-1.0-pro")
+
+def analyze_text_with_gemini(text: str) -> dict:
+    """
+    Sends text to Gemini to get a summary and key points.
+    """
+    prompt = f"""
+    Analyze the following text and provide a response in two parts:
+    1.  A one-sentence summary.
+    2.  A list of the 3 to 5 most important key points as bullet points.
+
+    Text:
+    ---
+    {text}
+    ---
+
+    Format your response exactly like this:
+    Summary: [Your single sentence summary here]
+    Key Points:
+    - [First key point]
+    - [Second key point]
+    - [Third key point]
+    """
+
+    response = gemini_model.generate_content(prompt)
+
+    # Parse the plain text response from the model
+    parts = response.text.split("Key Points:")
+    summary = parts[0].replace("Summary:", "").strip()
+    key_points_raw = parts[1].strip().split('- ')
+    key_points = [point.strip() for point in key_points_raw if point.strip()]
+
+    return {"summary": summary, "key_points": key_points}
+
+def answer_question_from_text(context: str, question: str) -> str:
+    """
+    Uses Gemini to answer a question based on a given context.
+    """
+    prompt = f"""
+    Based ONLY on the context provided below, answer the user's question.
+    If the answer is not contained within the text, state that clearly.
+
+    Context:
+    ---
+    {context}
+    ---
+
+    Question: {question}
+    """
+
+    response = gemini_model.generate_content(prompt)
+    return response.text.strip()
+backend/app/main.py:
+Set up the FastAPI application, endpoints, and CORS middleware to allow requests from the frontend.
+
+Endpoint /analyze (POST):
+
+Accepts TextInput.
+
+Calls core.analyze_text_with_gemini.
+
+Returns AnalysisResult.
+
+Endpoint /ask (POST):
+
+Accepts QuestionInput.
+
+Calls core.answer_question_from_text.
+
+Returns AnswerResult.
+
+Frontend (React & Tailwind CSS)
+frontend/package.json:
+Include dependencies: react, react-dom, axios, tailwindcss.
+
+frontend/src/index.css:
+Include the standard Tailwind CSS directives.
+
+frontend/src/App.jsx:
+
+Use useState hooks to manage the input text, analysis results, questions, answers, and loading states.
+
+Build a responsive, single-page UI with a dark theme (bg-slate-900, text-gray-200).
+
+Use axios to make POST requests to the /analyze and /ask backend endpoints.
+
+Display a loading spinner or pulsing animation while waiting for API responses.
+
+The layout should have a main content area for the text input and results, and a separate, visually distinct component for the Q&A chat interface.
+
+Style all elements (buttons, inputs, cards) using Tailwind CSS for a professional finish (e.g., rounded-lg, shadow-xl, focus:ring-2).
+
+4. README.md
+Generate a README.md file with clear, step-by-step instructions for setup and execution.
+
+Markdown
+
+# TL;DR AI - Intelligent Text Analysis Tool
+
+This application uses Google Cloud Vertex AI to summarize text and answer questions about it.
+
+## ⚠️ Required Setup: Google Cloud
+
+Before you can run this app, you must configure Google Cloud credentials.
+
+1.  **Create a Google Cloud Project:** If you don't have one, create one in the [Google Cloud Console](https://console.cloud.google.com/).
+2.  **Enable the Vertex AI API:** In your project, search for and enable the "Vertex AI API".
+3.  **Authenticate:** Authenticate your local environment or cloud shell by running this command and following the prompts:
+    ```bash
+    gcloud auth application-default login
+    ```
+4.  **Configure Project Details:** Open the `backend/app/core.py` file and replace the placeholder values for `PROJECT_ID` and `LOCATION` with your own.
+
+## How to Run This Project
+
+1.  **Start the Backend:**
+    ```bash
+    cd backend
+    pip install -r requirements.txt
+    uvicorn app.main:app --reload
+    ```
+2.  **Start the Frontend:**
+    Open a new terminal.
+    ```bash
+    cd frontend
+    npm install
+    npm run dev
+    ```
+3.  **Open the App:** Navigate to the URL provided by the `npm run dev` command (usually `http://localhost:5173`).
