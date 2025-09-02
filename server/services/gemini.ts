@@ -54,7 +54,16 @@ Return only valid JSON in this exact format:
     return result;
   } catch (error) {
     console.error("Error analyzing text with Gemini:", error);
-    throw new Error(`Failed to analyze text: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    
+    if (error instanceof Error) {
+      // Handle quota exceeded errors specifically
+      if (error.message.includes("quota") || error.message.includes("429")) {
+        throw new Error("API quota exceeded. Please try again later or check your Gemini API usage limits.");
+      }
+      throw new Error(`Failed to analyze text: ${error.message}`);
+    }
+    
+    throw new Error('Failed to analyze text: Unknown error');
   }
 }
 
@@ -103,6 +112,15 @@ Provide a clear, concise answer based only on the information in the context abo
     return answer;
   } catch (error) {
     console.error("Error answering question with Gemini:", error);
-    throw new Error(`Failed to answer question: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    
+    if (error instanceof Error) {
+      // Handle quota exceeded errors specifically
+      if (error.message.includes("quota") || error.message.includes("429")) {
+        throw new Error("API quota exceeded. Please try again later or check your Gemini API usage limits.");
+      }
+      throw new Error(`Failed to answer question: ${error.message}`);
+    }
+    
+    throw new Error('Failed to answer question: Unknown error');
   }
 }

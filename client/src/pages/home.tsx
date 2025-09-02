@@ -73,8 +73,10 @@ export default function Home() {
       const errorMessage = error instanceof Error ? error.message : "Failed to upload file";
       setError(errorMessage);
       toast({
-        title: "Upload Failed",
-        description: errorMessage,
+        title: "Upload Failed", 
+        description: errorMessage.includes("quota") 
+          ? "API quota exceeded. Please try again later." 
+          : errorMessage,
         variant: "destructive",
       });
     },

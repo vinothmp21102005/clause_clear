@@ -39,6 +39,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      // Handle specific API quota errors
+      if (error instanceof Error && error.message.includes("quota")) {
+        return res.status(429).json({ 
+          message: "API quota exceeded. Please try again later or check your Gemini API usage limits." 
+        });
+      }
+      
       res.status(500).json({ 
         message: error instanceof Error ? error.message : "Failed to analyze text" 
       });
@@ -53,6 +60,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const fileContent = req.file.buffer.toString('utf-8');
+      
+      // Check if file content is too long
+      if (fileContent.length > 50000) {
+        return res.status(400).json({ 
+          message: "File content is too long. Please upload a smaller file (max 50,000 characters)." 
+        });
+      }
+      
       const result = await analyzeTextWithGemini(fileContent);
       
       res.json({
@@ -62,6 +77,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error in /api/upload:", error);
+      
+      // Handle specific API quota errors
+      if (error instanceof Error && error.message.includes("quota")) {
+        return res.status(429).json({ 
+          message: "API quota exceeded. Please try again later or check your Gemini API usage limits." 
+        });
+      }
+      
       res.status(500).json({ 
         message: error instanceof Error ? error.message : "Failed to process file" 
       });
@@ -83,6 +106,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ 
           message: "Invalid input", 
           errors: error.errors 
+        });
+      }
+      
+      // Handle specific API quota errors
+      if (error instanceof Error && error.message.includes("quota")) {
+        return res.status(429).json({ 
+          message: "API quota exceeded. Please try again later or check your Gemini API usage limits." 
         });
       }
       
