@@ -133,6 +133,11 @@ Provide a clear, concise answer based only on the information in the context abo
   } catch (error: any) {
     console.error("Error answering question with Gemini:", error);
 
+    // Handle authentication errors specifically
+    if (error?.message?.includes("PERMISSION_DENIED") || error?.message?.includes("403")) {
+      throw new Error("Invalid or missing API key. Please check your GEMINI_API_KEY in the .env file and ensure it has proper permissions. Get your API key from https://makersuite.google.com/app/apikey");
+    }
+
     // Handle specific API quota errors
     if (error?.message?.includes("quota") || error?.message?.includes("429") || error?.status === 429) {
       throw new Error("API quota exceeded. Please try again later or check your Gemini API usage limits.");
