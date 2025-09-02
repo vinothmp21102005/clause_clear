@@ -4,12 +4,24 @@ import type { AnalysisResult } from "@shared/schema";
 const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY;
 
 if (!apiKey) {
-  throw new Error("GEMINI_API_KEY environment variable is required. Please set it in your .env file or environment variables.");
+  console.error("GEMINI_API_KEY environment variable is required. Please set it in your .env file or environment variables.");
 }
 
-const ai = new GoogleGenAI({ 
-  apiKey: apiKey
-});
+let ai: GoogleGenAI | null = null;
+
+function initializeAI(): GoogleGenAI {
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY environment variable is required. Please get your API key from https://makersuite.google.com/app/apikey and add it to your .env file.");
+  }
+  
+  if (!ai) {
+    ai = new GoogleGenAI({ 
+      apiKey: apiKey
+    });
+  }
+  
+  return ai;
+}
 
 export async function analyzeTextWithGemini(text: string): Promise<AnalysisResult> {
   try {
