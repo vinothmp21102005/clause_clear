@@ -45,25 +45,27 @@ Return only valid JSON in this exact format:
     }
 
     const result = JSON.parse(rawJson) as AnalysisResult;
-    
+
     // Validate the response structure
     if (!result.summary || !Array.isArray(result.keyPoints) || result.keyPoints.length === 0) {
       throw new Error("Invalid response structure from Gemini model");
     }
 
     return result;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error analyzing text with Gemini:", error);
-    
-    if (error instanceof Error) {
-      // Handle quota exceeded errors specifically
-      if (error.message.includes("quota") || error.message.includes("429")) {
-        throw new Error("API quota exceeded. Please try again later or check your Gemini API usage limits.");
-      }
-      throw new Error(`Failed to analyze text: ${error.message}`);
+
+    // Handle specific API quota errors
+    if (error?.message?.includes("quota") || error?.message?.includes("429") || error?.status === 429) {
+      throw new Error("API quota exceeded. Please try again later or check your Gemini API usage limits.");
     }
-    
-    throw new Error('Failed to analyze text: Unknown error');
+
+    // Handle other API errors
+    if (error?.message?.includes("API key")) {
+      throw new Error("Invalid API key. Please check your Gemini API key configuration.");
+    }
+
+    throw error;
   }
 }
 
@@ -110,17 +112,19 @@ Provide a clear, concise answer based only on the information in the context abo
     }
 
     return answer;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error answering question with Gemini:", error);
-    
-    if (error instanceof Error) {
-      // Handle quota exceeded errors specifically
-      if (error.message.includes("quota") || error.message.includes("429")) {
-        throw new Error("API quota exceeded. Please try again later or check your Gemini API usage limits.");
-      }
-      throw new Error(`Failed to answer question: ${error.message}`);
+
+    // Handle specific API quota errors
+    if (error?.message?.includes("quota") || error?.message?.includes("429") || error?.status === 429) {
+      throw new Error("API quota exceeded. Please try again later or check your Gemini API usage limits.");
     }
-    
-    throw new Error('Failed to answer question: Unknown error');
+
+    // Handle other API errors
+    if (error?.message?.includes("API key")) {
+      throw new Error("Invalid API key. Please check your Gemini API key configuration.");
+    }
+
+    throw error;
   }
 }
