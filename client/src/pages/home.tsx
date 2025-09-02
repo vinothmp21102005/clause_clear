@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { Brain, Sparkles, MessageCircle, Send, ClipboardList, AlertCircle, X } from "lucide-react";
+import { Brain, Sparkles, MessageCircle, Send, ClipboardList, AlertCircle, X, Upload, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,9 @@ export default function Home() {
   const [currentQuestion, setCurrentQuestion] = useState("");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [inputMode, setInputMode] = useState<'text' | 'file'>('text');
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const analyzeMutation = useMutation({
@@ -45,9 +48,45 @@ export default function Home() {
     },
   });
 
+  const uploadMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to upload file');
+      }
+      return response.json();
+    },
+    onSuccess: (result) => {
+      setAnalysisResult({ summary: result.summary, keyPoints: result.keyPoints });
+      setInputText(result.originalText);
+      setFileName(result.fileName);
+      setError(null);
+      setChatMessages([]);
+    },
+    onError: (error) => {
+      const errorMessage = error instanceof Error ? error.message : "Failed to upload file";
+      setError(errorMessage);
+      toast({
+        title: "Upload Failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    },
+  });
+
   const askMutation = useMutation({
     mutationFn: async ({ originalText, question }: { originalText: string; question: string }) => {
-      const response = await apiRequest("POST", "/api/ask", { originalText, question });
+      const response = await apiRequest("POST", "/api/ask", { 
+        originalText, 
+        question, 
+        allowRelatedQuestions: true 
+      });
       return response.json() as Promise<AnswerResult>;
     },
     onSuccess: (result, variables) => {
@@ -89,6 +128,26 @@ export default function Home() {
       return;
     }
     analyzeMutation.mutate(inputText);
+  };
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const allowedTypes = ['text/plain', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+      if (!allowedTypes.includes(file.type)) {
+        setError('Invalid file type. Only TXT, PDF, DOC, and DOCX files are allowed.');
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        setError('File size must be less than 10MB.');
+        return;
+      }
+      uploadMutation.mutate(file);
+    }
+  };
+
+  const triggerFileUpload = () => {
+    fileInputRef.current?.click();
   };
 
   const handleAskQuestion = () => {
@@ -135,38 +194,109 @@ export default function Home() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="relative">
-                  <Textarea
-                    value={inputText}
-                    onChange={(e) => setInputText(e.target.value)}
-                    placeholder="Paste your text here... (articles, reports, emails, etc.)"
-                    className="min-h-64 resize-none"
-                    data-testid="textarea-input"
-                  />
-                  <div className="absolute bottom-3 right-3 text-xs text-muted-foreground">
-                    {inputText.length} characters
-                  </div>
+                {/* Input Mode Toggle */}
+                <div className="flex gap-2 mb-4">
+                  <Button
+                    variant={inputMode === 'text' ? 'default' : 'outline'}
+                    onClick={() => setInputMode('text')}
+                    className="flex-1"
+                    data-testid="button-text-mode"
+                  >
+                    <FileText className="w-4 h-4 mr-2" />
+                    Text Input
+                  </Button>
+                  <Button
+                    variant={inputMode === 'file' ? 'default' : 'outline'}
+                    onClick={() => setInputMode('file')}
+                    className="flex-1"
+                    data-testid="button-file-mode"
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    File Upload
+                  </Button>
                 </div>
+
+                {inputMode === 'text' ? (
+                  <div className="relative">
+                    <Textarea
+                      value={inputText}
+                      onChange={(e) => setInputText(e.target.value)}
+                      placeholder="Paste your text here... (articles, reports, emails, etc.)"
+                      className="min-h-64 resize-none"
+                      data-testid="textarea-input"
+                    />
+                    <div className="absolute bottom-3 right-3 text-xs text-muted-foreground">
+                      {inputText.length} characters
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div 
+                      className="border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer hover:bg-accent/50 transition-colors"
+                      onClick={triggerFileUpload}
+                      data-testid="file-upload-area"
+                    >
+                      <Upload className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                      <p className="text-lg font-medium mb-2">Upload a Document</p>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Drag and drop or click to select a file
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Supports: TXT, PDF, DOC, DOCX (max 10MB)
+                      </p>
+                    </div>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".txt,.pdf,.doc,.docx"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                      data-testid="file-input"
+                    />
+                    {fileName && (
+                      <div className="flex items-center gap-2 p-3 bg-accent rounded-lg">
+                        <FileText className="w-4 h-4 text-primary" />
+                        <span className="text-sm font-medium" data-testid="uploaded-filename">{fileName}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
                 
-                <Button 
-                  onClick={handleAnalyze}
-                  disabled={analyzeMutation.isPending || !inputText.trim()}
-                  className="w-full"
-                  data-testid="button-analyze"
-                >
-                  <Sparkles className="w-4 h-4 mr-2" />
-                  {analyzeMutation.isPending ? "Analyzing..." : "Analyze Text"}
-                </Button>
+                {inputMode === 'text' && (
+                  <Button 
+                    onClick={handleAnalyze}
+                    disabled={analyzeMutation.isPending || !inputText.trim()}
+                    className="w-full"
+                    data-testid="button-analyze"
+                  >
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    {analyzeMutation.isPending ? "Analyzing..." : "Analyze Text"}
+                  </Button>
+                )}
+                
+                {inputMode === 'file' && (
+                  <Button 
+                    onClick={triggerFileUpload}
+                    disabled={uploadMutation.isPending}
+                    className="w-full"
+                    data-testid="button-upload-file"
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    {uploadMutation.isPending ? "Processing..." : "Choose File to Analyze"}
+                  </Button>
+                )}
               </CardContent>
             </Card>
 
             {/* Loading State */}
-            {analyzeMutation.isPending && (
+            {(analyzeMutation.isPending || uploadMutation.isPending) && (
               <Card className="shadow-lg">
                 <CardContent className="flex items-center justify-center py-12">
                   <div className="text-center">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-                    <p className="text-muted-foreground">AI is analyzing your text...</p>
+                    <p className="text-muted-foreground">
+                      {uploadMutation.isPending ? "AI is processing your file..." : "AI is analyzing your text..."}
+                    </p>
                     <p className="text-sm text-muted-foreground/70 mt-1">This may take a few moments</p>
                   </div>
                 </CardContent>
@@ -174,7 +304,7 @@ export default function Home() {
             )}
 
             {/* Analysis Results Card */}
-            {analysisResult && !analyzeMutation.isPending && (
+            {analysisResult && !analyzeMutation.isPending && !uploadMutation.isPending && (
               <Card className="shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">

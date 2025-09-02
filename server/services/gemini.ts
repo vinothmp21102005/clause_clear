@@ -58,9 +58,27 @@ Return only valid JSON in this exact format:
   }
 }
 
-export async function answerQuestionFromText(context: string, question: string): Promise<string> {
+export async function answerQuestionFromText(context: string, question: string, allowRelatedQuestions: boolean = true): Promise<string> {
   try {
-    const prompt = `Based ONLY on the context provided below, answer the user's question. 
+    const prompt = allowRelatedQuestions 
+      ? `You are an expert assistant. Answer the user's question using the provided context as the primary source, but you may also use your general knowledge to provide helpful, related information when appropriate.
+
+Context:
+---
+${context}
+---
+
+Question: ${question}
+
+Instructions:
+1. First, check if the answer is directly available in the provided context
+2. If yes, provide that information as the primary answer
+3. If the context doesn't contain the specific answer but relates to the question, you may supplement with relevant general knowledge
+4. If the question is completely unrelated to the context, politely redirect the user to ask questions about the provided text
+5. Always be clear about what information comes from the provided text versus your general knowledge
+
+Provide a helpful, accurate answer.`
+      : `Based ONLY on the context provided below, answer the user's question. 
 If the answer cannot be found in the provided context, clearly state that the information is not available in the text.
 
 Context:
