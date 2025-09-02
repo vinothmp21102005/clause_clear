@@ -1,8 +1,14 @@
 import { GoogleGenAI } from "@google/genai";
 import type { AnalysisResult } from "@shared/schema";
 
+const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY;
+
+if (!apiKey) {
+  throw new Error("GEMINI_API_KEY environment variable is required. Please set it in your .env file or environment variables.");
+}
+
 const ai = new GoogleGenAI({ 
-  apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY || "" 
+  apiKey: apiKey
 });
 
 export async function analyzeTextWithGemini(text: string): Promise<AnalysisResult> {
