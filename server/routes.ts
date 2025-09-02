@@ -62,9 +62,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const fileContent = req.file.buffer.toString('utf-8');
       
       // Check if file content is too long
-      if (fileContent.length > 50000) {
+      if (fileContent.length > 200000) {
         return res.status(400).json({ 
-          message: "File content is too long. Please upload a smaller file (max 50,000 characters)." 
+          message: "File content is too long. Please upload a smaller file (max 200,000 characters)." 
         });
       }
       

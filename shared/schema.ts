@@ -2,7 +2,7 @@ import { z } from "zod";
 
 // Text analysis schemas
 export const textInputSchema = z.object({
-  text: z.string().min(1, "Text is required").max(50000, "Text is too long"),
+  text: z.string().min(1, "Text is required").max(200000, "Text is too long (max 200,000 characters)"),
 });
 
 export const analysisResultSchema = z.object({
@@ -11,7 +11,7 @@ export const analysisResultSchema = z.object({
 });
 
 export const questionInputSchema = z.object({
-  originalText: z.string().min(1, "Original text is required"),
+  originalText: z.string().min(1, "Original text is required").max(200000, "Original text is too long (max 200,000 characters)"),
   question: z.string().min(1, "Question is required"),
   allowRelatedQuestions: z.boolean().optional().default(true),
 });
